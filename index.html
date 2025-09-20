@@ -18,6 +18,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f8f9fa;
             color: #333;
+            height: 100vh;
         }
         
         .navbar {
@@ -27,9 +28,10 @@
         .sidebar {
             background-color: var(--secondary-color);
             color: white;
-            height: 100vh;
+            height: calc(100vh - 56px);
             position: sticky;
-            top: 0;
+            top: 56px;
+            overflow-y: auto;
         }
         
         .sidebar a {
@@ -46,6 +48,8 @@
         
         .main-content {
             padding: 20px;
+            height: calc(100vh - 56px);
+            overflow-y: auto;
         }
         
         .timetable {
@@ -149,11 +153,6 @@
             position: absolute;
             top: 5px;
             left: 5px;
-            display: none;
-        }
-        
-        .lesson:hover .action-buttons {
-            display: block;
         }
         
         .action-btn {
@@ -179,168 +178,33 @@
     </style>
 </head>
 <body>
-    <?php
-    // محاكاة اتصال بقاعدة البيانات
-    $scheduleData = isset($_COOKIE['englishSchedule']) ? json_decode($_COOKIE['englishSchedule'], true) : array();
-    $announcements = isset($_COOKIE['englishAnnouncements']) ? json_decode($_COOKIE['englishAnnouncements'], true) : array();
-    
-    // معالجة طلبات الأساتذة
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-        if ($_POST['action'] === 'add_lesson') {
-            $day = $_POST['day'];
-            $time = $_POST['time'];
-            $teacher = $_POST['teacher'];
-            
-            if (!isset($scheduleData[$time])) {
-                $scheduleData[$time] = array();
-            }
-            
-            $scheduleData[$time][$day] = array(
-                'teacher' => $teacher,
-                'time' => $time,
-                'day' => $day
-            );
-            
-            setcookie('englishSchedule', json_encode($scheduleData), time() + (86400 * 30), "/");
-        }
-        elseif ($_POST['action'] === 'add_announcement') {
-            $title = $_POST['title'];
-            $content = $_POST['content'];
-            $important = isset($_POST['important']) ? true : false;
-            
-            $newAnnouncement = array(
-                'id' => time(),
-                'title' => $title,
-                'content' => $content,
-                'important' => $important,
-                'date' => date('Y-m-d H:i:s'),
-                'author' => 'الأستاذ'
-            );
-            
-            array_unshift($announcements, $newAnnouncement);
-            setcookie('englishAnnouncements', json_encode($announcements), time() + (86400 * 30), "/");
-        }
-        elseif ($_POST['action'] === 'delete_lesson') {
-            $day = $_POST['day'];
-            $time = $_POST['time'];
-            
-            if (isset($scheduleData[$time][$day])) {
-                unset($scheduleData[$time][$day]);
-                setcookie('englishSchedule', json_encode($scheduleData), time() + (86400 * 30), "/");
-            }
-        }
-        
-        // إعادة التوجيه لتجنب إعادة إرسال النموذج
-        header("Location: ".$_SERVER['PHP_SELF']);
-        exit();
-    }
-    
-    // بيانات المستخدمين
-    $users = array(
-        'teachers' => array(
-            array('username' => "سيف", 'password' => "121212", 'name' => "الأستاذ سيف")
-        ),
-        'students' => array(
-            array('username' => "حليم", 'password' => "حليم", 'name' => "الطالب حليم"),
-            array('username' => "هييبا", 'password' => "هييبا", 'name' => "الطالب هييبا"),
-            array('username' => "طيب", 'password' => "131313", 'name' => "الطالب طيب")
-        )
-    );
-    
-    $timeSlots = array(
-        "08:00 - 09:30",
-        "10:00 - 11:30",
-        "12:00 - 13:30",
-        "14:00 - 15:30"
-    );
-    
-    $days = array("الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس");
-    
-    // التحقق من تسجيل الدخول
-    session_start();
-    $currentUser = null;
-    $isTeacher = false;
-    
-    if (isset($_SESSION['user'])) {
-        $currentUser = $_SESSION['user'];
-        $isTeacher = ($_SESSION['userType'] === 'teacher');
-    }
-    
-    // معالجة تسجيل الدخول
-    if (isset($_POST['login'])) {
-        $username = $_POST['username'];
-        $password = $_POST['password'];
-        $userType = $_POST['userType'];
-        
-        $userFound = false;
-        
-        if ($userType === 'teacher') {
-            foreach ($users['teachers'] as $user) {
-                if ($user['username'] === $username && $user['password'] === $password) {
-                    $_SESSION['user'] = $user;
-                    $_SESSION['userType'] = 'teacher';
-                    $currentUser = $user;
-                    $isTeacher = true;
-                    $userFound = true;
-                    break;
-                }
-            }
-        } else {
-            foreach ($users['students'] as $user) {
-                if ($user['username'] === $username && $user['password'] === $password) {
-                    $_SESSION['user'] = $user;
-                    $_SESSION['userType'] = 'student';
-                    $currentUser = $user;
-                    $userFound = true;
-                    break;
-                }
-            }
-        }
-        
-        if (!$userFound) {
-            $loginError = "اسم المستخدم أو كلمة المرور غير صحيحة";
-        }
-    }
-    
-    // تسجيل الخروج
-    if (isset($_GET['logout'])) {
-        session_destroy();
-        header("Location: ".$_SERVER['PHP_SELF']);
-        exit();
-    }
-    ?>
-    
-    <?php if (!$currentUser): ?>
-    <div id="loginPage" class="container">
+    <div id="loginPage">
         <div class="login-container">
             <h2 class="text-center mb-4">تسجيل الدخول للنظام</h2>
             <div class="user-type">
                 <div class="user-type-btn active" id="studentBtn">طالب</div>
                 <div class="user-type-btn" id="teacherBtn">أستاذ</div>
             </div>
-            <form method="post">
-                <input type="hidden" name="userType" id="userTypeInput" value="student">
+            <form id="loginForm">
                 <div class="mb-3">
                     <label for="username" class="form-label">اسم المستخدم</label>
-                    <input type="text" class="form-control" id="username" name="username" required>
+                    <input type="text" class="form-control" id="username" required>
                 </div>
                 <div class="mb-3">
                     <label for="password" class="form-label">كلمة المرور</label>
-                    <input type="password" class="form-control" id="password" name="password" required>
+                    <input type="password" class="form-control" id="password" required>
                 </div>
-                <button type="submit" name="login" class="btn btn-primary w-100">تسجيل الدخول</button>
+                <button type="submit" class="btn btn-primary w-100">تسجيل الدخول</button>
             </form>
-            <?php if (isset($loginError)): ?>
-            <div class="alert alert-danger mt-3"><?php echo $loginError; ?></div>
-            <?php endif; ?>
+            <div id="loginError" class="alert alert-danger mt-3 d-none">اسم المستخدم أو كلمة المرور غير صحيحة</div>
             
             <div class="public-link mt-4">
-                <p><a href="schedule.php" target="_blank">عرض الجدول العام (بدون تسجيل دخول)</a></p>
+                <p><a href="#" id="publicScheduleLink">عرض الجدول العام (بدون تسجيل دخول)</a></p>
             </div>
         </div>
     </div>
-    <?php else: ?>
-    <div id="mainPage">
+
+    <div id="mainPage" class="d-none">
         <nav class="navbar navbar-expand-lg navbar-dark">
             <div class="container">
                 <a class="navbar-brand" href="#">
@@ -353,38 +217,34 @@
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav ms-auto">
                         <li class="nav-item">
-                            <a class="nav-link" href="#" id="userInfo">مرحباً <?php echo $currentUser['name']; ?></a>
+                            <a class="nav-link" href="#" id="userInfo"></a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="?logout=1">تسجيل الخروج</a>
+                            <a class="nav-link" href="#" id="logoutBtn">تسجيل الخروج</a>
                         </li>
                     </ul>
                 </div>
             </div>
         </nav>
 
-        <div class="container-fluid">
-            <div class="row">
+        <div class="container-fluid h-100">
+            <div class="row h-100">
                 <div class="col-lg-2 col-md-3 p-0 sidebar">
                     <a href="#" class="active"><i class="bi bi-calendar-week me-2"></i> الجدول الأسبوعي</a>
                     <a href="#"><i class="bi bi-megaphone me-2"></i> الإعلانات</a>
-                    <?php if ($isTeacher): ?>
-                    <a href="#" data-bs-toggle="modal" data-bs-target="#addLessonModal"><i class="bi bi-plus-circle me-2"></i> إضافة حصة</a>
-                    <a href="#" id="editModeBtn"><i class="bi bi-pencil-square me-2"></i> وضع التعديل</a>
-                    <?php endif; ?>
+                    <a href="#" class="teacher-only" data-bs-toggle="modal" data-bs-target="#addLessonModal"><i class="bi bi-plus-circle me-2"></i> إضافة حصة</a>
+                    <a href="#" class="teacher-only" id="editModeBtn"><i class="bi bi-pencil-square me-2"></i> وضع التعديل</a>
                     <a href="#"><i class="bi bi-search me-2"></i> البحث في الجدول</a>
-                    <a href="schedule.php" target="_blank"><i class="bi bi-eye me-2"></i> العرض العام</a>
+                    <a href="#" id="publicLink"><i class="bi bi-eye me-2"></i> العرض العام</a>
                 </div>
 
                 <div class="col-lg-10 col-md-9 main-content">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h3>الجدول الأسبوعي للقسم</h3>
                         <div class="d-flex">
-                            <?php if ($isTeacher): ?>
-                            <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#addAnnouncementModal">
+                            <button class="btn btn-outline-primary me-2 teacher-only" data-bs-toggle="modal" data-bs-target="#addAnnouncementModal">
                                 <i class="bi bi-megaphone"></i> إضافة إعلان
                             </button>
-                            <?php endif; ?>
                             <button class="btn btn-outline-secondary" id="refreshBtn">
                                 <i class="bi bi-arrow-clockwise"></i> تحديث
                             </button>
@@ -394,22 +254,6 @@
                     <div class="mb-4">
                         <h5 class="mb-3">الإعلانات والتحديثات</h5>
                         <div id="announcementsContainer">
-                            <?php if (empty($announcements)): ?>
-                            <div class="alert alert-info">لا توجد إعلانات حالياً</div>
-                            <?php else: ?>
-                                <?php foreach ($announcements as $announcement): ?>
-                                <div class="announcement <?php echo $announcement['important'] ? 'alert-new' : ''; ?>">
-                                    <div class="d-flex justify-content-between">
-                                        <h6><i class="bi <?php echo $announcement['important'] ? 'bi-exclamation-circle' : 'bi-info-circle'; ?> me-2"></i> <?php echo $announcement['title']; ?></h6>
-                                        <?php if ($announcement['important']): ?>
-                                        <span class="badge bg-danger">مهم</span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <p><?php echo $announcement['content']; ?></p>
-                                    <small class="text-muted">نشر في: <?php echo $announcement['date']; ?> بواسطة <?php echo $announcement['author']; ?></small>
-                                </div>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -425,34 +269,7 @@
                                     <th>الخميس</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <?php for ($i = 0; $i < count($timeSlots); $i++): ?>
-                                <tr>
-                                    <td class="time-slot"><?php echo $timeSlots[$i]; ?></td>
-                                    <?php for ($j = 0; $j < count($days); $j++): ?>
-                                    <td>
-                                        <?php if (isset($scheduleData[$i][$j])): ?>
-                                        <div class="lesson">
-                                            <div>لغة إنجليزية</div>
-                                            <div><?php echo $scheduleData[$i][$j]['teacher']; ?></div>
-                                            <?php if ($isTeacher): ?>
-                                            <div class="action-buttons">
-                                                <form method="post" style="display:inline;">
-                                                    <input type="hidden" name="action" value="delete_lesson">
-                                                    <input type="hidden" name="day" value="<?php echo $j; ?>">
-                                                    <input type="hidden" name="time" value="<?php echo $i; ?>">
-                                                    <button type="submit" class="btn btn-sm btn-danger action-btn" onclick="return confirm('هل أنت متأكد من حذف هذه الحصة؟')">×</button>
-                                                </form>
-                                            </div>
-                                            <?php endif; ?>
-                                        </div>
-                                        <?php else: ?>
-                                        <div class="empty-slot">لا توجد حصة</div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <?php endfor; ?>
-                                </tr>
-                                <?php endfor; ?>
+                            <tbody id="scheduleBody">
                             </tbody>
                         </table>
                     </div>
@@ -460,9 +277,7 @@
             </div>
         </div>
     </div>
-    <?php endif; ?>
 
-    <?php if ($isTeacher): ?>
     <div class="modal fade" id="addLessonModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -471,11 +286,10 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form method="post" id="lessonForm">
-                        <input type="hidden" name="action" value="add_lesson">
+                    <form id="lessonForm">
                         <div class="mb-3">
                             <label for="lessonDay" class="form-label">اليوم</label>
-                            <select class="form-select" id="lessonDay" name="day" required>
+                            <select class="form-select" id="lessonDay" required>
                                 <option value="">اختر اليوم</option>
                                 <option value="0">الأحد</option>
                                 <option value="1">الإثنين</option>
@@ -486,7 +300,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="lessonTime" class="form-label">الوقت</label>
-                            <select class="form-select" id="lessonTime" name="time" required>
+                            <select class="form-select" id="lessonTime" required>
                                 <option value="">اختر الوقت</option>
                                 <option value="0">08:00 - 09:30</option>
                                 <option value="1">10:00 - 11:30</option>
@@ -496,7 +310,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="lessonTeacher" class="form-label">الأستاذ</label>
-                            <select class="form-select" id="lessonTeacher" name="teacher" required>
+                            <select class="form-select" id="lessonTeacher" required>
                                 <option value="">اختر الأستاذ</option>
                                 <option value="سيف">الأستاذ سيف</option>
                             </select>
@@ -505,7 +319,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" form="lessonForm" class="btn btn-primary">حفظ الحصة</button>
+                    <button type="button" class="btn btn-primary" id="saveLessonBtn">حفظ الحصة</button>
                 </div>
             </div>
         </div>
@@ -519,59 +333,491 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form method="post" id="announcementForm">
-                        <input type="hidden" name="action" value="add_announcement">
+                    <form id="announcementForm">
                         <div class="mb-3">
                             <label for="announcementTitle" class="form-label">عنوان الإعلان</label>
-                            <input type="text" class="form-control" id="announcementTitle" name="title" required>
+                            <input type="text" class="form-control" id="announcementTitle" required>
                         </div>
                         <div class="mb-3">
                             <label for="announcementContent" class="form-label">محتوى الإعلان</label>
-                            <textarea class="form-control" id="announcementContent" name="content" rows="4" required></textarea>
+                            <textarea class="form-control" id="announcementContent" rows="4" required></textarea>
                         </div>
                         <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="isImportant" name="important">
+                            <input type="checkbox" class="form-check-input" id="isImportant">
                             <label class="form-check-label" for="isImportant">تمييز كإعلان مهم</label>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" form="announcementForm" class="btn btn-primary">حفظ الإعلان</button>
+                    <button type="button" class="btn btn-primary" id="saveAnnouncementBtn">حفظ الإعلان</button>
                 </div>
             </div>
         </div>
     </div>
-    <?php endif; ?>
+
+    <div class="modal fade" id="publicScheduleModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">الجدول الزمني - العرض العام</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="timetable">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>الوقت</th>
+                                    <th>الأحد</th>
+                                    <th>الإثنين</th>
+                                    <th>الثلاثاء</th>
+                                    <th>الأربعاء</th>
+                                    <th>الخميس</th>
+                                </tr>
+                            </thead>
+                            <tbody id="publicScheduleBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h5>الإعلانات والتحديثات</h5>
+                        <div id="publicAnnouncementsContainer">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const studentBtn = document.getElementById('studentBtn');
-            const teacherBtn = document.getElementById('teacherBtn');
-            const userTypeInput = document.getElementById('userTypeInput');
+        // بيانات المستخدمين
+        const users = {
+            teachers: [
+                { username: "سيف", password: "121212", name: "الأستاذ سيف" }
+            ],
+            students: [
+                { username: "حليم", password: "حليم", name: "الطالب حليم" },
+                { username: "هييبا", password: "هييبا", name: "الطالب هييبا" },
+                { username: "طيب", password: "131313", name: "الطالب طيب" }
+            ]
+        };
+
+        const timeSlots = [
+            "08:00 - 09:30",
+            "10:00 - 11:30",
+            "12:00 - 13:30",
+            "14:00 - 15:30"
+        ];
+
+        const days = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس"];
+
+        let currentUser = null;
+        let isTeacher = false;
+        let isEditMode = false;
+        let scheduleData = Array(4).fill().map(() => Array(5).fill(null));
+        let announcements = [];
+
+        // عناصر DOM
+        const loginPage = document.getElementById('loginPage');
+        const mainPage = document.getElementById('mainPage');
+        const loginForm = document.getElementById('loginForm');
+        const loginError = document.getElementById('loginError');
+        const studentBtn = document.getElementById('studentBtn');
+        const teacherBtn = document.getElementById('teacherBtn');
+        const userInfo = document.getElementById('userInfo');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const teacherOnlyElements = document.querySelectorAll('.teacher-only');
+        const saveAnnouncementBtn = document.getElementById('saveAnnouncementBtn');
+        const saveLessonBtn = document.getElementById('saveLessonBtn');
+        const scheduleBody = document.getElementById('scheduleBody');
+        const announcementsContainer = document.getElementById('announcementsContainer');
+        const editModeBtn = document.getElementById('editModeBtn');
+        const publicScheduleLink = document.getElementById('publicScheduleLink');
+        const publicLink = document.getElementById('publicLink');
+        const publicScheduleBody = document.getElementById('publicScheduleBody');
+        const publicAnnouncementsContainer = document.getElementById('publicAnnouncementsContainer');
+
+        // تهيئة التطبيق
+        function initApp() {
+            loadData();
             
-            if (studentBtn && teacherBtn) {
-                studentBtn.addEventListener('click', () => {
-                    studentBtn.classList.add('active');
-                    teacherBtn.classList.remove('active');
-                    userTypeInput.value = 'student';
-                });
+            // التحقق من وجود تسجيل دخول سابق
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                isTeacher = localStorage.getItem('isTeacher') === 'true';
                 
-                teacherBtn.addEventListener('click', () => {
-                    teacherBtn.classList.add('active');
-                    studentBtn.classList.remove('active');
-                    userTypeInput.value = 'teacher';
-                });
+                loginPage.classList.add('d-none');
+                mainPage.classList.remove('d-none');
+                userInfo.textContent = `مرحباً ${currentUser.name}`;
+                
+                if (isTeacher) {
+                    teacherOnlyElements.forEach(el => el.style.display = 'block');
+                } else {
+                    teacherOnlyElements.forEach(el => el.style.display = 'none');
+                }
+                
+                renderSchedule();
+                renderAnnouncements();
+            }
+        }
+
+        // تبديل نوع المستخدم
+        studentBtn.addEventListener('click', () => {
+            studentBtn.classList.add('active');
+            teacherBtn.classList.remove('active');
+            isTeacher = false;
+        });
+
+        teacherBtn.addEventListener('click', () => {
+            teacherBtn.classList.add('active');
+            studentBtn.classList.remove('active');
+            isTeacher = true;
+        });
+
+        // تسجيل الدخول
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            let user = null;
+            
+            if (isTeacher) {
+                user = users.teachers.find(u => u.username === username && u.password === password);
+            } else {
+                user = users.students.find(u => u.username === username && u.password === password);
             }
             
-            const refreshBtn = document.getElementById('refreshBtn');
-            if (refreshBtn) {
-                refreshBtn.addEventListener('click', () => {
-                    location.reload();
-                });
+            if (user) {
+                currentUser = user;
+                loginError.classList.add('d-none');
+                loginPage.classList.add('d-none');
+                mainPage.classList.remove('d-none');
+                userInfo.textContent = `مرحباً ${user.name}`;
+                
+                // حفظ حالة تسجيل الدخول
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                localStorage.setItem('isTeacher', isTeacher);
+                
+                if (isTeacher) {
+                    teacherOnlyElements.forEach(el => el.style.display = 'block');
+                    editModeBtn.textContent = 'وضع التعديل';
+                    isEditMode = false;
+                } else {
+                    teacherOnlyElements.forEach(el => el.style.display = 'none');
+                }
+                
+                loadData();
+                renderSchedule();
+                renderAnnouncements();
+            } else {
+                loginError.classList.remove('d-none');
             }
         });
+
+        // تسجيل الخروج
+        logoutBtn.addEventListener('click', () => {
+            currentUser = null;
+            isTeacher = false;
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('isTeacher');
+            
+            mainPage.classList.add('d-none');
+            loginPage.classList.remove('d-none');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        });
+
+        // حفظ الإعلان
+        saveAnnouncementBtn.addEventListener('click', () => {
+            const title = document.getElementById('announcementTitle').value;
+            const content = document.getElementById('announcementContent').value;
+            const isImportant = document.getElementById('isImportant').checked;
+            
+            if (title && content) {
+                const newAnnouncement = {
+                    id: Date.now(),
+                    title,
+                    content,
+                    important: isImportant,
+                    date: new Date().toLocaleString('ar-EG'),
+                    author: currentUser.name
+                };
+                
+                announcements.unshift(newAnnouncement);
+                saveData();
+                renderAnnouncements();
+                
+                document.getElementById('announcementForm').reset();
+                bootstrap.Modal.getInstance(document.getElementById('addAnnouncementModal')).hide();
+                
+                alert('تم إضافة الإعلان بنجاح!');
+            } else {
+                alert('يرجى ملء جميع الحقول المطلوبة');
+            }
+        });
+
+        // حفظ الحصة
+        saveLessonBtn.addEventListener('click', () => {
+            const day = document.getElementById('lessonDay').value;
+            const time = document.getElementById('lessonTime').value;
+            const teacher = document.getElementById('lessonTeacher').value;
+            
+            if (day !== '' && time !== '' && teacher !== '') {
+                scheduleData[time][day] = {
+                    teacher: teacher,
+                    time: timeSlots[time],
+                    day: days[day]
+                };
+                
+                saveData();
+                renderSchedule();
+                
+                document.getElementById('lessonForm').reset();
+                bootstrap.Modal.getInstance(document.getElementById('addLessonModal')).hide();
+                
+                alert('تم إضافة الحصة بنجاح!');
+            } else {
+                alert('يرجى ملء جميع الحقول المطلوبة');
+            }
+        });
+
+        // وضع التعديل
+        editModeBtn.addEventListener('click', () => {
+            isEditMode = !isEditMode;
+            if (isEditMode) {
+                editModeBtn.textContent = 'إنهاء التعديل';
+                editModeBtn.classList.add('btn-danger');
+            } else {
+                editModeBtn.textContent = 'وضع التعديل';
+                editModeBtn.classList.remove('btn-danger');
+            }
+            renderSchedule();
+        });
+
+        // تحديث الصفحة
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            loadData();
+            renderSchedule();
+            renderAnnouncements();
+            alert('تم تحديث البيانات');
+        });
+
+        // عرض الجدول العام
+        publicScheduleLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            renderPublicSchedule();
+            const modal = new bootstrap.Modal(document.getElementById('publicScheduleModal'));
+            modal.show();
+        });
+
+        publicLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            renderPublicSchedule();
+            const modal = new bootstrap.Modal(document.getElementById('publicScheduleModal'));
+            modal.show();
+        });
+
+        // عرض الجدول
+        function renderSchedule() {
+            scheduleBody.innerHTML = '';
+            
+            for (let i = 0; i < timeSlots.length; i++) {
+                const row = document.createElement('tr');
+                
+                const timeCell = document.createElement('td');
+                timeCell.textContent = timeSlots[i];
+                timeCell.classList.add('time-slot');
+                row.appendChild(timeCell);
+                
+                for (let j = 0; j < days.length; j++) {
+                    const cell = document.createElement('td');
+                    
+                    if (scheduleData[i][j]) {
+                        const lessonDiv = document.createElement('div');
+                        lessonDiv.classList.add('lesson');
+                        lessonDiv.innerHTML = `
+                            <div>لغة إنجليزية</div>
+                            <div>${scheduleData[i][j].teacher}</div>
+                        `;
+                        
+                        if (isEditMode && isTeacher) {
+                            const actionButtons = document.createElement('div');
+                            actionButtons.classList.add('action-buttons');
+                            actionButtons.innerHTML = `
+                                <button class="btn btn-sm btn-danger action-btn delete-btn" data-time="${i}" data-day="${j}">×</button>
+                            `;
+                            lessonDiv.appendChild(actionButtons);
+                        }
+                        
+                        cell.appendChild(lessonDiv);
+                    } else {
+                        cell.classList.add('empty-slot');
+                        cell.textContent = 'لا توجد حصة';
+                        
+                        if (isEditMode && isTeacher) {
+                            cell.innerHTML = `
+                                <button class="btn btn-sm btn-primary add-btn" data-time="${i}" data-day="${j}">
+                                    <i class="bi bi-plus"></i> إضافة حصة
+                                </button>
+                            `;
+                        }
+                    }
+                    
+                    row.appendChild(cell);
+                }
+                
+                scheduleBody.appendChild(row);
+            }
+            
+            if (isEditMode && isTeacher) {
+                document.querySelectorAll('.add-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const time = e.target.closest('.add-btn').dataset.time;
+                        const day = e.target.closest('.add-btn').dataset.day;
+                        
+                        document.getElementById('lessonTime').value = time;
+                        document.getElementById('lessonDay').value = day;
+                        
+                        const modal = new bootstrap.Modal(document.getElementById('addLessonModal'));
+                        modal.show();
+                    });
+                });
+                
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const time = e.target.closest('.delete-btn').dataset.time;
+                        const day = e.target.closest('.delete-btn').dataset.day;
+                        
+                        if (confirm('هل أنت متأكد من حذف هذه الحصة؟')) {
+                            scheduleData[time][day] = null;
+                            saveData();
+                            renderSchedule();
+                            alert('تم حذف الحصة بنجاح!');
+                        }
+                    });
+                });
+            }
+        }
+
+        function renderAnnouncements() {
+            announcementsContainer.innerHTML = '';
+            
+            if (announcements.length === 0) {
+                announcementsContainer.innerHTML = '<div class="alert alert-info">لا توجد إعلانات حالياً</div>';
+                return;
+            }
+            
+            announcements.forEach(announcement => {
+                const announcementDiv = document.createElement('div');
+                announcementDiv.classList.add('announcement');
+                if (announcement.important) {
+                    announcementDiv.classList.add('alert-new');
+                }
+                
+                announcementDiv.innerHTML = `
+                    <div class="d-flex justify-content-between">
+                        <h6><i class="bi ${announcement.important ? 'bi-exclamation-circle' : 'bi-info-circle'} me-2"></i> ${announcement.title}</h6>
+                        ${announcement.important ? '<span class="badge bg-danger">مهم</span>' : ''}
+                    </div>
+                    <p>${announcement.content}</p>
+                    <small class="text-muted">نشر في: ${announcement.date} بواسطة ${announcement.author}</small>
+                `;
+                
+                announcementsContainer.appendChild(announcementDiv);
+            });
+        }
+
+        
+        function renderPublicSchedule() {
+            publicScheduleBody.innerHTML = '';
+            
+            for (let i = 0; i < timeSlots.length; i++) {
+                const row = document.createElement('tr');
+                
+                const timeCell = document.createElement('td');
+                timeCell.textContent = timeSlots[i];
+                timeCell.classList.add('time-slot');
+                row.appendChild(timeCell);
+                
+                for (let j = 0; j < days.length; j++) {
+                    const cell = document.createElement('td');
+                    
+                    if (scheduleData[i][j]) {
+                        cell.innerHTML = `
+                            <div class="lesson">
+                                <div>لغة إنجليزية</div>
+                                <div>${scheduleData[i][j].teacher}</div>
+                            </div>
+                        `;
+                    } else {
+                        cell.classList.add('empty-slot');
+                        cell.textContent = 'لا توجد حصة';
+                    }
+                    
+                    row.appendChild(cell);
+                }
+                
+                publicScheduleBody.appendChild(row);
+            }
+            
+            
+            publicAnnouncementsContainer.innerHTML = '';
+            
+            if (announcements.length === 0) {
+                publicAnnouncementsContainer.innerHTML = '<div class="alert alert-info">لا توجد إعلانات حالياً</div>';
+                return;
+            }
+            
+            announcements.forEach(announcement => {
+                const announcementDiv = document.createElement('div');
+                announcementDiv.classList.add('announcement');
+                if (announcement.important) {
+                    announcementDiv.classList.add('alert-new');
+                }
+                
+                announcementDiv.innerHTML = `
+                    <div class="d-flex justify-content-between">
+                        <h6><i class="bi ${announcement.important ? 'bi-exclamation-circle' : 'bi-info-circle'} me-2"></i> ${announcement.title}</h6>
+                        ${announcement.important ? '<span class="badge bg-danger">مهم</span>' : ''}
+                    </div>
+                    <p>${announcement.content}</p>
+                    <small class="text-muted">نشر في: ${announcement.date} بواسطة ${announcement.author}</small>
+                `;
+                
+                publicAnnouncementsContainer.appendChild(announcementDiv);
+            });
+        }
+
+        
+        function saveData() {
+            localStorage.setItem('englishSchedule', JSON.stringify(scheduleData));
+            localStorage.setItem('englishAnnouncements', JSON.stringify(announcements));
+        }
+
+        
+        function loadData() {
+            const savedSchedule = localStorage.getItem('englishSchedule');
+            const savedAnnouncements = localStorage.getItem('englishAnnouncements');
+            
+            if (savedSchedule) {
+                scheduleData = JSON.parse(savedSchedule);
+            }
+            
+            if (savedAnnouncements) {
+                announcements = JSON.parse(savedAnnouncements);
+            }
+        }
+
+        
+        initApp();
     </script>
 </body>
 </html>
